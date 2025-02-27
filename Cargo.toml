@@ -1,0 +1,28 @@
+[package]
+name = "sensevoice-rs"
+version = "0.1.0"
+edition = "2021"
+
+
+[patch.crates-io]
+kaldi-fbank-rust = {path = "./kaldi-fbank-rust"}
+rknn-rs = {path = "../rknn-rs"}
+
+
+[dependencies]
+kaldi-fbank-rust = "0.1.0"
+rknn-rs = "0.1.0"
+hound = "3.5.1"
+ndarray = { version="0.16.1", features=["rayon"]}
+ndarray-npy = "0.9.1"
+sentencepiece = "0.11.2"
+ndarray-stats = "0.6.0"
+rayon = "1.10.0"
+hf-hub = "0.4.2"
+
+
+[target.'cfg(target_os = "macos")'.dependencies]
+ort = { version = "2.0.0-rc.9", features = ["coreml", "ndarray", "load-dynamic"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+ort = { version = "2.0.0-rc.9", features = ["ndarray"] }
