@@ -145,7 +145,7 @@ enum VadDetectMode {
 }
 
 #[derive(Debug)]
-pub struct FSMN {
+pub struct FSMNVad {
     session: Session,
     decibel: Vec<f32>,
     output_data_buf: Vec<FrameData>,
@@ -160,7 +160,7 @@ pub struct FSMN {
     latest_confirmed_speech_frame: usize,
 }
 
-impl FSMN {
+impl FSMNVad {
     pub fn new(
         sample_rate: u32,
         model_path: impl AsRef<Path>,
@@ -272,9 +272,7 @@ impl FSMN {
             .map(|i| {
                 let frame = &waveform[i..i + frame_size];
                 // 正規化到 [-1.0, 1.0]
-                let normalized_frame: Vec<f32> =
-                    frame.iter().map(|&x| x as f32 / 32768.0).collect();
-                let energy: f32 = normalized_frame.iter().map(|&x| x.powi(2)).sum();
+                let energy: f32 = frame.iter().map(|&x| (x as f32 / 32768.0).powi(2)).sum();
                 10.0 * (energy + 1e-6).log10()
             })
             .collect();

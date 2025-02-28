@@ -1599,6 +1599,8 @@ dependencies = [
 [[package]]
 name = "rknn-rs"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "047aaabd06f7b3b641ef96fa2df2e0ebf0039ce5c3d137aaf5c9c435ec2e965f"
 dependencies = [
  "bindgen",
  "bytemuck",
