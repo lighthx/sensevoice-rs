@@ -13,7 +13,7 @@ sudo curl -L https://github.com/airockchip/rknn-toolkit2/raw/refs/heads/master/r
 ## Example
 
 Also see [examples](examples) dictionary
-```
+```Rust
 use hf_hub::api::sync::Api;
 use sensevoice_rs::SenseVoiceSmall;
 
