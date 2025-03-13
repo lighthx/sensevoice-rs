@@ -1,10 +1,36 @@
 # SenseVoiceSmall
 
-又一個rust輪子
+A Rust-based, Rknn as backend ASR. Running on the low cost SBC npu, fast and chep.
 
-# 範例
+## Install
 
-請見main.rs
+You should install rknn.so first.
+
+```bash
+sudo curl -L https://github.com/airockchip/rknn-toolkit2/raw/refs/heads/master/rknpu2/runtime/Linux/librknn_api/aarch64/librknnrt.so -o /lib/librknnrt.so
+```
+
+## 範例
+
+```
+use hf_hub::api::sync::Api;
+use sensevoice_rs::SenseVoiceSmall;
+
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut svs = SenseVoiceSmall::init()?;
+    
+    let api = Api::new().unwrap();
+    let repo = api.model("happyme531/SenseVoiceSmall-RKNN2".to_owned());
+    let wav_path = repo.get("output.wav")?;
+    let allseg = svs.infer_file(wav_path)?;
+    for seg in allseg {
+        println!("{:?}", seg);
+    }
+    
+    Ok(svs.destroy()?)
+}
+```
 
 ## 輸出範例
 

@@ -5,42 +5,83 @@ use std::path::Path;
 
 use ndarray::Array3;
 
+/// Represents the state machine for voice activity detection (VAD).
+///
+/// This enum defines the possible states of the VAD process.
 #[derive(Debug, PartialEq)]
 enum VadStateMachine {
+    /// Indicates that the start of a speech segment has not yet been detected.
     StartPointNotDetected,
+    /// Indicates that the system is currently within a speech segment.
     InSpeechSegment,
+    /// Indicates that the end of a speech segment has been detected.
     EndPointDetected,
 }
 
 // 幀狀態
+/// Represents the state of an individual audio frame.
+///
+/// This enum categorizes each frame as either silence or speech.
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum FrameState {
-    Sil,    // 靜音
-    Speech, // 語音
+    /// Silence frame
+    Sil,
+    /// Speech frame
+    Speech,
 }
 
 // 語音狀態變化
+/// Represents transitions between audio states.
+///
+/// This enum defines the possible changes between silence and speech states.
 #[derive(Debug, PartialEq)]
 enum AudioChangeState {
-    Sil2Sil,       // 靜音保持
-    Sil2Speech,    // 靜音到語音
-    Speech2Speech, // 語音保持
-    Speech2Sil,    // 語音到靜音
+    /// Transition from silence to silence
+    Sil2Sil,
+    /// Transition from silence to speech
+    Sil2Speech,
+    /// Transition from speech to speech
+    Speech2Speech,
+    /// Transition from speech to silence
+    Speech2Sil,
 }
 
 // 滑動窗口檢測器
+/// A sliding window detector for identifying speech transitions.
+///
+/// This structure maintains a window of frame states to detect changes between silence and speech.
 #[derive(Debug)]
 struct WindowDetector {
-    win_size_frame: usize,             // 窗口大小（幀數）
-    sil_to_speech_frmcnt_thres: usize, // 靜音到語音的幀數閾值
-    speech_to_sil_frmcnt_thres: usize, // 語音到靜音的幀數閾值
-    win_sum: usize,                    // 窗口內語音幀的總和
-    win_state: Vec<usize>,             // 窗口內每幀的狀態（0 或 1）
-    cur_win_pos: usize,                // 當前窗口位置
-    pre_frame_state: FrameState,       // 前一狀態
+    /// Size of the window in frames.
+    win_size_frame: usize,
+    /// Threshold of consecutive speech frames to transition from silence to speech.
+    sil_to_speech_frmcnt_thres: usize,
+    /// Threshold of consecutive silence frames to transition from speech to silence.
+    speech_to_sil_frmcnt_thres: usize,
+    /// Sum of speech frames (1s) within the window.
+    win_sum: usize,
+    /// Vector of frame states within the window (0 for silence, 1 for speech).
+    win_state: Vec<usize>,
+    /// Current position within the window, wraps around when reaching the end.
+    cur_win_pos: usize,
+    /// Previous frame state for tracking transitions.
+    pre_frame_state: FrameState,
 }
 
+/// Implementation of methods for `WindowDetector`.
 impl WindowDetector {
+    /// Creates a new `WindowDetector` instance with specified parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `window_size_ms` - Size of the sliding window in milliseconds.
+    /// * `sil_to_speech_time` - Time threshold in milliseconds to transition from silence to speech.
+    /// * `speech_to_sil_time` - Time threshold in milliseconds to transition from speech to silence.
+    /// * `frame_size_ms` - Size of each frame in milliseconds.
+    ///
+    /// # Returns
+    ///
+    /// A new `WindowDetector` instance initialized with the given parameters.
     fn new(
         window_size_ms: usize,
         sil_to_speech_time: usize,
@@ -59,6 +100,17 @@ impl WindowDetector {
         }
     }
 
+    /// Detects the state change for a single frame within the sliding window.
+    ///
+    /// Updates the window state and returns the detected transition.
+    ///
+    /// # Arguments
+    ///
+    /// * `frame_state` - The state of the current frame (silence or speech).
+    ///
+    /// # Returns
+    ///
+    /// An `AudioChangeState` indicating the transition detected based on the window.
     fn detect_one_frame(&mut self, frame_state: FrameState) -> AudioChangeState {
         let cur_state = if frame_state == FrameState::Speech {
             1
@@ -88,27 +140,48 @@ impl WindowDetector {
     }
 }
 
+/// Configuration options for the FSMN VAD system.
+///
+/// This structure defines the parameters used to configure voice activity detection.
 #[derive(Debug, Clone, Copy)]
 pub struct VADXOptions {
-    sample_rate: u32,                // 採樣率
-    frame_in_ms: usize,              // 幀間隔（ms）
-    frame_length_ms: usize,          // 幀長度（ms）
-    decibel_thres: f32,              // 分貝閾值
-    snr_thres: f32,                  // 信噪比閾值
-    speech_noise_thres: f32,         // 語音與靜音概率差閾值
-    max_end_silence_time: usize,     // 最大結束靜音時間（ms）
-    window_size_ms: usize,           // 窗口大小（ms）
-    sil_to_speech_time_thres: usize, // 靜音到語音閾值（ms）
-    speech_to_sil_time_thres: usize, // 語音到靜音閾值（ms）
-    max_single_segment_time: usize,  // 最大單段時間（ms）
-
-    detect_mode: VadDetectMode, // 检测模式
-    speech_2_noise_ratio: f32,  // 語音與噪音比
-    noise_frame_num_used_for_snr: f32, // 用於信噪比計算的噪音幀數
-                                // 可根據需要添加其他參數
+    /// Sample rate of the audio in Hz (e.g., 16000).
+    sample_rate: u32,
+    /// Frame interval in milliseconds.
+    frame_in_ms: usize,
+    /// Frame length in milliseconds.
+    frame_length_ms: usize,
+    /// Decibel threshold for silence detection.
+    decibel_thres: f32,
+    /// Signal-to-noise ratio threshold.
+    snr_thres: f32,
+    /// Threshold for the difference between speech and silence probabilities.
+    speech_noise_thres: f32,
+    /// Maximum silence duration at the end of a segment in milliseconds.
+    max_end_silence_time: usize,
+    /// Size of the sliding window in milliseconds.
+    window_size_ms: usize,
+    /// Time threshold in milliseconds to transition from silence to speech.
+    sil_to_speech_time_thres: usize,
+    /// Time threshold in milliseconds to transition from speech to silence.
+    speech_to_sil_time_thres: usize,
+    /// Maximum duration of a single speech segment in milliseconds.
+    max_single_segment_time: usize,
+    /// Detection mode (single or multiple utterances).
+    detect_mode: VadDetectMode,
+    /// Ratio of speech to noise for probability calculation.
+    speech_2_noise_ratio: f32,
+    /// Number of noise frames used for SNR calculation.
+    noise_frame_num_used_for_snr: f32,
 }
 
+/// Implementation of methods for `VADXOptions`.
 impl VADXOptions {
+    /// Creates a `VADXOptions` instance with default values.
+    ///
+    /// # Returns
+    ///
+    /// A `VADXOptions` instance initialized with sensible defaults.
     pub fn default() -> Self {
         Self {
             sample_rate: 16000,
@@ -129,40 +202,92 @@ impl VADXOptions {
     }
 }
 
+/// Represents metadata for a single audio frame.
+///
+/// This structure stores timing and segment boundary information for each frame.
 #[derive(Debug, Clone)]
 struct FrameData {
+    /// Start time of the frame in milliseconds.
     start_ms: i32,
+    /// End time of the frame in milliseconds.
     end_ms: i32,
+    /// Indicates if the frame contains the start of a speech segment.
     contain_seg_start_point: bool,
+    /// Indicates if the frame contains the end of a speech segment.
     contain_seg_end_point: bool,
 }
 
+/// Defines the detection mode for VAD.
+///
+/// This enum specifies whether to detect a single utterance or multiple utterances.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 enum VadDetectMode {
+    /// Detects a single continuous utterance.
     SingleUtterance,
+    /// Detects multiple utterances within the audio (default).
     #[default]
     MutipleUtterance,
 }
 
+/// Implements voice activity detection using an FSMN model.
+///
+/// This structure manages the VAD process, including feature processing, state tracking, and segment detection.
 #[derive(Debug)]
 pub struct FSMNVad {
+    /// ONNX session for running the FSMN model.
     session: Session,
+    /// Decibel values for each frame.
     decibel: Vec<f32>,
+    /// Buffer storing frame metadata.
     output_data_buf: Vec<FrameData>,
+    /// Offset into the output buffer for processed segments.
     output_data_buf_offset: usize,
+    /// Configuration options for VAD.
     opts: VADXOptions,
+    /// Current state of the VAD state machine.
     vad_state: VadStateMachine,
+    /// Sliding window detector for state transitions.
     window_detector: WindowDetector,
-    frm_cnt: usize, // 總幀數
+    /// Total number of frames processed.
+    frm_cnt: usize,
+    /// Count of consecutive silence frames.
     continous_silence_frame_count: usize,
+    /// Index of the confirmed start frame of a speech segment.
     confirmed_start_frame: Option<usize>,
+    /// Index of the confirmed end frame of a speech segment.
     confirmed_end_frame: Option<usize>,
+    /// Index of the most recent confirmed speech frame.
     latest_confirmed_speech_frame: usize,
 }
 
+/// Implementation of methods for `FSMNVad`.
 impl FSMNVad {
+    /// Creates a new `FSMNVad` instance with a specified model and options.
+    ///
+    /// # Arguments
+    ///
+    /// * `model_path` - Path to the ONNX model file for VAD.
+    /// * `opts` - Configuration options for VAD.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the initialized `FSMNVad` instance or an error if model loading fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `ort::Error` if the ONNX session cannot be created from the model file.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use fsmn_vad::{FSMNVad, VADXOptions};
+    /// use std::path::Path;
+    ///
+    /// let opts = VADXOptions::default();
+    /// let vad = FSMNVad::new(Path::new("model.onnx"), opts)
+    ///     .expect("Failed to initialize FSMNVad");
+    /// ```
     pub fn new(
-        sample_rate: u32,
         model_path: impl AsRef<Path>,
         opts: VADXOptions,
     ) -> Result<Self, ort::Error> {
@@ -188,6 +313,17 @@ impl FSMNVad {
         })
     }
 
+    /// Determines the state of a single frame based on decibel, SNR, and model scores.
+    ///
+    /// # Arguments
+    ///
+    /// * `frame_idx` - Index of the frame within the scores array.
+    /// * `noise_average_decibel` - Mutable reference to the average noise decibel, updated during processing.
+    /// * `scores` - 3D array of model output scores.
+    ///
+    /// # Returns
+    ///
+    /// A `FrameState` indicating whether the frame is silence or speech.
     fn get_frame_state(
         &self,
         frame_idx: usize,
@@ -227,6 +363,39 @@ impl FSMNVad {
         FrameState::Sil
     }
 
+    /// Performs voice activity detection on audio features and waveform.
+    ///
+    /// Processes the input audio to detect speech segments, returning their start and end times.
+    ///
+    /// # Arguments
+    ///
+    /// * `feats` - 2D array of audio features.
+    /// * `waveform` - Raw audio samples as 16-bit integers.
+    /// * `is_final` - Indicates whether this is the final batch of audio to process.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a vector of tuples, each representing the start and end times (in milliseconds) of detected speech segments.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if feature processing, score computation, or segment detection fails.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use fsmn_vad::{FSMNVad, VADXOptions};
+    /// use ndarray::Array2;
+    /// use std::path::Path;
+    ///
+    /// let opts = VADXOptions::default();
+    /// let mut vad = FSMNVad::new(Path::new("model.onnx"), opts).expect("Failed to initialize");
+    /// let feats = Array2::zeros((100, 400)); // Example features
+    /// let waveform = vec![0_i16; 16000]; // Example waveform
+    /// let segments = vad.infer_vad(feats, &waveform, true)
+    ///     .expect("Failed to perform VAD");
+    /// println!("Detected segments: {:?}", segments);
+    /// ```
     pub fn infer_vad(
         &mut self,
         feats: Array2<f32>,
@@ -262,6 +431,13 @@ impl FSMNVad {
         Ok(segments)
     }
 
+    /// Computes decibel values for each frame from the waveform.
+    ///
+    /// Updates the `decibel` field with calculated values based on frame energy.
+    ///
+    /// # Arguments
+    ///
+    /// * `waveform` - Raw audio samples as 16-bit integers.
     fn compute_decibel(&mut self, waveform: &[i16]) {
         let frame_size =
             (self.opts.frame_length_ms as f32 * self.opts.sample_rate as f32 / 1000.0) as usize;
@@ -278,6 +454,19 @@ impl FSMNVad {
             .collect();
     }
 
+    /// Computes VAD scores from audio features using the ONNX model.
+    ///
+    /// # Arguments
+    ///
+    /// * `feats` - 2D array of audio features.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a 3D array of scores from the model.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the ONNX session fails to run or if tensor extraction fails.
     fn compute_scores(
         &mut self,
         feats: Array2<f32>,
@@ -296,6 +485,21 @@ impl FSMNVad {
         Ok(dyn_to_fix3array.to_owned())
     }
 
+    /// Detects speech frames in a common (non-final) batch.
+    ///
+    /// Updates the state machine and output buffer based on computed scores.
+    ///
+    /// # Arguments
+    ///
+    /// * `scores` - 3D array of VAD scores.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or failure of the detection process.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if internal processing fails (though unlikely in this implementation).
     fn detect_common_frames(
         &mut self,
         scores: &Array3<f32>,
@@ -393,6 +597,21 @@ impl FSMNVad {
         Ok(())
     }
 
+    /// Detects speech frames in the final batch of audio.
+    ///
+    /// Ensures that any ongoing speech segment is properly closed when processing the last batch.
+    ///
+    /// # Arguments
+    ///
+    /// * `scores` - 3D array of VAD scores.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or failure of the detection process.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if common frame detection fails.
     fn detect_last_frames(
         &mut self,
         scores: &Array3<f32>,
@@ -412,6 +631,9 @@ impl FSMNVad {
         Ok(())
     }
 
+    /// Resets the VAD detection state to its initial values.
+    ///
+    /// Clears all tracking variables and reinitializes the window detector.
     fn reset_detection(&mut self) {
         self.vad_state = VadStateMachine::StartPointNotDetected; // 重置狀態機
         self.continous_silence_frame_count = 0; // 重置靜音幀計數

@@ -1728,6 +1728,7 @@ dependencies = [
  "ndarray-stats",
  "ort",
  "rayon",
+ "regex",
  "rknn-rs",
  "sentencepiece",
 ]

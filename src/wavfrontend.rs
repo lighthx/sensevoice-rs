@@ -3,30 +3,56 @@ use std::{ffi::CStr, fs::File};
 use kaldi_fbank_rust::{FbankOptions, FrameExtractionOptions, MelBanksOptions, OnlineFbank};
 use ndarray::{s, Array1, Array2, ArrayView1, Axis};
 
+/// Represents the type of window function used in feature extraction.
+///
+/// This enum defines the supported window types for audio frame processing.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum WindowType {
+    /// Hanning window (default).
     #[default]
     Hanning,
+    /// Sine window.
     Sine,
+    /// Hamming window.
     Hamming,
+    /// Povey window.
     Povey,
+    /// Rectangular window.
     Rectangular,
+    /// Blackman window.
     Blackman,
 }
 
+/// Configuration for the `WavFrontend` audio feature extraction system.
+///
+/// This structure defines parameters for processing waveforms into mel-frequency features.
 #[derive(Debug)]
 pub struct WavFrontendConfig {
+    /// Sample rate of the audio in Hz (e.g., 16000).
     pub sample_rate: i32,
+    /// Length of each frame in milliseconds.
     pub frame_length_ms: f32,
+    /// Shift between consecutive frames in milliseconds.
     pub frame_shift_ms: f32,
+    /// Number of mel filter banks.
     pub n_mels: usize,
+    /// Number of frames to stack for low frame rate (LFR) processing.
     pub lfr_m: usize,
+    /// Frame interval for LFR processing.
     pub lfr_n: usize,
+    /// Optional path to the CMVN (cepstral mean and variance normalization) file.
     pub cmvn_file: Option<String>,
+    /// Type of window function to apply to each frame.
     pub window_type: WindowType,
 }
 
+/// Implementation of the `Default` trait for `WavFrontendConfig`.
 impl Default for WavFrontendConfig {
+    /// Creates a `WavFrontendConfig` instance with default values.
+    ///
+    /// # Returns
+    ///
+    /// A `WavFrontendConfig` instance with commonly used default settings.
     fn default() -> Self {
         WavFrontendConfig {
             // Todo: 其實我不知道正確的config是甚麼，這裡是根據我專案寫的
@@ -42,14 +68,45 @@ impl Default for WavFrontendConfig {
     }
 }
 
+/// Audio feature extraction frontend for processing waveforms.
+///
+/// This structure handles the extraction of mel-frequency features from audio data, optionally applying LFR and CMVN.
 #[derive(Debug)]
 pub struct WavFrontend {
+    /// Configuration settings for feature extraction.
     config: WavFrontendConfig,
+    /// Optional array of mean values for CMVN.
     cmvn_means: Option<Array1<f32>>,
+    /// Optional array of variance values for CMVN.
     cmvn_vars: Option<Array1<f32>>,
 }
 
+/// Implementation of methods for `WavFrontend`.
 impl WavFrontend {
+    /// Creates a new `WavFrontend` instance with the specified configuration.
+    ///
+    /// If a CMVN file is provided in the config, it loads the mean and variance values for normalization.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Configuration settings for the frontend.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the initialized `WavFrontend` instance or an error if CMVN loading fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the CMVN file cannot be opened or parsed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use wavfrontend::{WavFrontend, WavFrontendConfig};
+    ///
+    /// let config = WavFrontendConfig::default();
+    /// let frontend = WavFrontend::new(config).expect("Failed to initialize WavFrontend");
+    /// ```
     pub fn new(config: WavFrontendConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let (cmvn_means, cmvn_vars) = if let Some(cmvn_path) = &config.cmvn_file {
             let (means, vars) = Self::load_cmvn(cmvn_path)?;
@@ -64,6 +121,21 @@ impl WavFrontend {
         })
     }
 
+    /// Loads CMVN statistics from a file.
+    ///
+    /// Parses a CMVN file to extract mean and variance vectors for normalization.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to the CMVN file.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a tuple of mean and variance arrays (`Array1<f32>`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be opened or if the CMVN data is malformed.
     fn load_cmvn(path: &str) -> Result<(Array1<f32>, Array1<f32>), Box<dyn std::error::Error>> {
         let file = File::open(path)?;
         let reader = std::io::BufReader::new(file);
@@ -102,6 +174,21 @@ impl WavFrontend {
         Ok((Array1::from_vec(means), Array1::from_vec(vars)))
     }
 
+    /// Computes mel-frequency filterbank (fbank) features from a waveform.
+    ///
+    /// Uses the `kaldi_fbank_rust` library to extract fbank features based on the configured parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `waveform` - Slice of audio samples as 32-bit floats.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a 2D array of fbank features with shape `(frames, n_mels)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if feature computation fails or if the output array cannot be constructed.
     fn compute_fbank_features(
         &self,
         waveform: &[f32],
@@ -150,6 +237,19 @@ impl WavFrontend {
         Ok(fbank_array)
     }
 
+    /// Applies low frame rate (LFR) processing to fbank features.
+    ///
+    /// Stacks and subsamples frames to reduce the frame rate, padding as necessary.
+    ///
+    /// # Arguments
+    ///
+    /// * `fbank` - 2D array of fbank features.
+    /// * `lfr_m` - Number of frames to stack.
+    /// * `lfr_n` - Frame interval for subsampling.
+    ///
+    /// # Returns
+    ///
+    /// A 2D array of LFR-processed features with shape `(t_lfr, n_mels * lfr_m)`.
     fn apply_lfr(&self, fbank: &Array2<f32>, lfr_m: usize, lfr_n: usize) -> Array2<f32> {
         let t = fbank.shape()[0];
         let t_lfr = ((t as f32) / lfr_n as f32).ceil() as usize;
@@ -191,6 +291,17 @@ impl WavFrontend {
         lfr_array
     }
 
+    /// Applies cepstral mean and variance normalization (CMVN) to features.
+    ///
+    /// Normalizes the features using precomputed mean and variance values if available.
+    ///
+    /// # Arguments
+    ///
+    /// * `feats` - 2D array of features to normalize.
+    ///
+    /// # Returns
+    ///
+    /// A 2D array of normalized features, or the original features if no CMVN data is provided.
     fn apply_cmvn(&self, feats: &Array2<f32>) -> Array2<f32> {
         if let (Some(means), Some(vars)) = (&self.cmvn_means, &self.cmvn_vars) {
             let (frames, dim) = feats.dim();
@@ -202,6 +313,34 @@ impl WavFrontend {
         }
     }
 
+    /// Extracts mel-frequency features from a waveform.
+    ///
+    /// Processes the input waveform to produce fbank features, applies LFR, and optionally applies CMVN.
+    ///
+    /// # Arguments
+    ///
+    /// * `waveform` - Slice of audio samples as 16-bit integers.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a 2D array of extracted features.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if fbank computation fails.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use wavfrontend::{WavFrontend, WavFrontendConfig};
+    ///
+    /// let config = WavFrontendConfig::default();
+    /// let frontend = WavFrontend::new(config).expect("Failed to initialize");
+    /// let waveform = vec![0_i16; 16000]; // Example waveform
+    /// let features = frontend.extract_features(&waveform)
+    ///     .expect("Failed to extract features");
+    /// println!("Feature shape: {:?}", features.shape());
+    /// ```
     pub fn extract_features(
         &self,
         waveform: &[i16],
