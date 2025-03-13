@@ -10,8 +10,9 @@ You should install rknn.so first.
 sudo curl -L https://github.com/airockchip/rknn-toolkit2/raw/refs/heads/master/rknpu2/runtime/Linux/librknn_api/aarch64/librknnrt.so -o /lib/librknnrt.so
 ```
 
-## 範例
+## Example
 
+Also see [examples](examples) dictionary
 ```
 use hf_hub::api::sync::Api;
 use sensevoice_rs::SenseVoiceSmall;
@@ -32,21 +33,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## 輸出範例
+## Output Example
 
-```
-Speech segment: 60ms - 6120ms
-<|zh|><|HAPPY|><|BGM|><|woitn|>大家好喵今天给大家分享的是在线一线语音生成网站的合集能够更加分富
-Speech segment: 6060ms - 12120ms
-<|zh|><|HAPPY|><|BGM|><|woitn|>方面大家选择自己想要生成的角色进入网站可以看到所有的删至
-Speech segment: 12060ms - 18120ms
-<|zh|><|NEUTRAL|><|BGM|><|woitn|>模型都在这里选择你想要擅藏的角色点击进入就来到我
-Speech segment: 18060ms - 24120ms
-<|zh|><|HAPPY|><|BGM|><|woitn|>到了生成的页面在文本框内输入你想要生成的内容然后点击生成就好了
-Speech segment: 24060ms - 30120ms
-<|zh|><|NEUTRAL|><|BGM|><|woitn|>另外呢因为每次的生成结果都会有一些不一样的地方如果您觉得第一次的生成结果
-Speech segment: 30060ms - 36120ms
-<|zh|><|NEUTRAL|><|BGM|><|woitn|>生成效果不好的话可以尝试重新生成也可以稍微调取一下像的住址再生成试试
-Speech segment: 36060ms - 39840ms
-<|zh|><|NEUTRAL|><|BGM|><|woitn|>使用时一定要遵守法律法规不可以损害刷害人的形象哦
+```Rust
+VoiceText { start_ms: 60, end_ms: 6120, language: Zh, emotion: Happy, event: Bgm, punctuation_normalization: Woitn, content: "大家好喵今天给大家分享的是在线一线语音生成网站的合集能够更加分富" }
+VoiceText { start_ms: 6060, end_ms: 12120, language: Zh, emotion: Happy, event: Bgm, punctuation_normalization: Woitn, content: "方面大家选择自己想要生成的角色进入网站可以看到所有的删至" }
+VoiceText { start_ms: 12060, end_ms: 18120, language: Zh, emotion: Neutral, event: Bgm, punctuation_normalization: Woitn, content: "模型都在这里选择你想要擅藏的角色点击进入就来到我" }
+VoiceText { start_ms: 18060, end_ms: 24120, language: Zh, emotion: Happy, event: Bgm, punctuation_normalization: Woitn, content: "到了生成的页面在文本框内输入你想要生成的内容然后点击生成就好了" }
+VoiceText { start_ms: 24060, end_ms: 30120, language: Zh, emotion: Neutral, event: Bgm, punctuation_normalization: Woitn, content: "另外呢因为每次的生成结果都会有一些不一样的地方如果您觉得第一次的生成结果" }
+VoiceText { start_ms: 30060, end_ms: 36120, language: Zh, emotion: Neutral, event: Bgm, punctuation_normalization: Woitn, content: "生成效果不好的话可以尝试重新生成也可以稍微调取一下像的住址再生成试试" }
+VoiceText { start_ms: 36060, end_ms: 39840, language: Zh, emotion: Neutral, event: Bgm, punctuation_normalization: Woitn, content: "使用时一定要遵守法律法规不可以损害刷害人的形象哦" }
 ```
