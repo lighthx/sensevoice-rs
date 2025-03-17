@@ -19,7 +19,7 @@ use sensevoice_rs::SenseVoiceSmall;
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut svs = SenseVoiceSmall::init()?;
+    let mut svs = SenseVoiceSmall::init("happyme531/SenseVoiceSmall-RKNN2")?;
     
     let api = Api::new().unwrap();
     let repo = api.model("happyme531/SenseVoiceSmall-RKNN2".to_owned());
@@ -31,6 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     Ok(svs.destroy()?)
 }
+
 ```
 
 ## Output Example
@@ -44,21 +45,3 @@ VoiceText { start_ms: 24060, end_ms: 30120, language: Zh, emotion: Neutral, even
 VoiceText { start_ms: 30060, end_ms: 36120, language: Zh, emotion: Neutral, event: Bgm, punctuation_normalization: Woitn, content: "生成效果不好的话可以尝试重新生成也可以稍微调取一下像的住址再生成试试" }
 VoiceText { start_ms: 36060, end_ms: 39840, language: Zh, emotion: Neutral, event: Bgm, punctuation_normalization: Woitn, content: "使用时一定要遵守法律法规不可以损害刷害人的形象哦" }
 ```
-
-## Use as rust library
-
-Because the `kaldi-fbank-rust` library not upload to crates.io, so you should add this crate by yourself. Maybe we can breakaway from nonpublish library in the feature.
-
-git clone my fork of `kaldi-fbank-rust`.
-
-```bash
-git clone https://github.com/darkautism/kaldi-fbank-rust/
-```
-
-In your Cargo.toml
-```
-[patch.crates-io]
-kaldi-fbank-rust = {path = "./kaldi-fbank-rust"}
-```
-
-No you can write your code with sensevoice_rs.
