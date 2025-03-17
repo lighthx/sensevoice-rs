@@ -3,13 +3,8 @@ name = "sensevoice-rs"
 version = "0.1.0"
 edition = "2021"
 
-
-[patch.crates-io]
-kaldi-fbank-rust = {path = "./kaldi-fbank-rust"}
-
-
 [dependencies]
-kaldi-fbank-rust = "0.1.0"
+kaldi-fbank-rust = { git = "https://github.com/darkautism/kaldi-fbank-rust.git" }
 rknn-rs = "0.1.0"
 hound = "3.5.1"
 ndarray = { version="0.16.1", features=["rayon"]}

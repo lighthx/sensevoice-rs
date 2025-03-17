@@ -935,6 +935,7 @@ dependencies = [
 [[package]]
 name = "kaldi-fbank-rust"
 version = "0.1.0"
+source = "git+https://github.com/darkautism/kaldi-fbank-rust.git#b9e9da84c856af4737555478f31a512f9dcddbf1"
 dependencies = [
  "cc",
 ]
