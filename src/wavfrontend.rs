@@ -1,6 +1,6 @@
 use std::{ffi::CStr, fs::File};
 
-use kaldi_fbank_rust::{FbankOptions, FrameExtractionOptions, MelBanksOptions, OnlineFbank};
+use kaldi_fbank_rust_kautism::{FbankOptions, FrameExtractionOptions, MelBanksOptions, OnlineFbank};
 use ndarray::{s, Array1, Array2, ArrayView1, Axis};
 
 /// Represents the type of window function used in feature extraction.

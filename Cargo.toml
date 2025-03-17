@@ -2,9 +2,12 @@
 name = "sensevoice-rs"
 version = "0.1.0"
 edition = "2021"
+description = "rkllm rust ffi binding"
+homepage = "https://github.com/darkautism/sensevoice-rs"
+license = "MIT"
 
 [dependencies]
-kaldi-fbank-rust = { git = "https://github.com/darkautism/kaldi-fbank-rust.git" }
+kaldi-fbank-rust-kautism = "0.1.0"
 rknn-rs = "0.1.0"
 hound = "3.5.1"
 ndarray = { version="0.16.1", features=["rayon"]}
