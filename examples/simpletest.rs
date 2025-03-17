@@ -3,7 +3,7 @@ use sensevoice_rs::SenseVoiceSmall;
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut svs = SenseVoiceSmall::init()?;
+    let mut svs = SenseVoiceSmall::init("happyme531/SenseVoiceSmall-RKNN2")?;
     
     let api = Api::new().unwrap();
     let repo = api.model("happyme531/SenseVoiceSmall-RKNN2".to_owned());

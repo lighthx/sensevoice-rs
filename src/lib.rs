@@ -321,10 +321,10 @@ impl SenseVoiceSmall {
     ///
     /// let mut svs = SenseVoiceSmall::init().expect("Failed to initialize SenseVoiceSmall");
     /// ```
-    pub fn init() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn init<P: AsRef<std::path::Path>>(model_path: P) -> Result<Self, Box<dyn std::error::Error>> {
         // TODO: Maybe we should read a config file in the reop to read model.
         let api = Api::new().unwrap();
-        let repo = api.model("happyme531/SenseVoiceSmall-RKNN2".to_owned());
+        let repo = api.model(model_path.as_ref().to_string_lossy().to_string());
         let fsmn_path = repo.get("fsmnvad-offline.onnx")?;
         let embedding_path = repo.get("embedding.npy")?;
         let rknn_path = repo.get("sense-voice-encoder.rknn")?;
