@@ -1,9 +1,9 @@
 use hf_hub::api::sync::Api;
-use sensevoice_rs::SenseVoiceSmall;
+use sensevoice_rs::{fsmn_vad::VADXOptions, SenseVoiceSmall};
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut svs = SenseVoiceSmall::init("happyme531/SenseVoiceSmall-RKNN2")?;
+    let mut svs = SenseVoiceSmall::init("happyme531/SenseVoiceSmall-RKNN2", VADXOptions::default())?;
     
     let api = Api::new().unwrap();
     let repo = api.model("happyme531/SenseVoiceSmall-RKNN2".to_owned());

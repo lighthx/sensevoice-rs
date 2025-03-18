@@ -1,4 +1,6 @@
+use ndarray::stack;
 use ndarray::Array2;
+use ndarray::Axis;
 use ndarray::Ix3;
 use ort::session::Session;
 use std::path::Path;
@@ -194,7 +196,7 @@ impl VADXOptions {
             window_size_ms: 200,
             sil_to_speech_time_thres: 150,
             speech_to_sil_time_thres: 150,
-            max_single_segment_time: 6000,
+            max_single_segment_time: 9000,
             speech_2_noise_ratio: 1.0,
             noise_frame_num_used_for_snr: 100.0,
             detect_mode: VadDetectMode::default(),

@@ -2,6 +2,8 @@ pub mod fsmn_vad;
 pub mod wavfrontend;
 
 use core::fmt;
+use std::io::Read;
+use std::sync::Mutex;
 use std::{fs::File, io::BufReader};
 
 use fsmn_vad::{FSMNVad, VADXOptions};
@@ -195,10 +197,6 @@ impl SenseVoicePunctuationNormalization {
 /// This structure holds the transcription result of an audio segment, including timing, language, emotion, event, and normalization details.
 #[derive(Debug)]
 pub struct VoiceText {
-    /// Start time of the audio segment in milliseconds.
-    pub start_ms: i32,
-    /// End time of the audio segment in milliseconds.
-    pub end_ms: i32,
     /// The language of the transcribed text.
     pub language: SenseVoiceLanguage,
     /// The detected emotion in the audio segment.
@@ -224,7 +222,7 @@ pub struct VoiceText {
 /// # Returns
 ///
 /// An `Option<VoiceText>` where `None` indicates parsing failure due to invalid format or unrecognized tags.
-fn parse_line(line: &str, start_ms: i32, end_ms: i32) -> Option<VoiceText> {
+fn parse_line(line: &str) -> Option<VoiceText> {
     let re = Regex::new(r"^<\|(.*?)\|><\|(.*?)\|><\|(.*?)\|><\|(.*?)\|>(.*)$").unwrap();
     if let Some(caps) = re.captures(line) {
         let lang_str = &caps[1];
@@ -239,8 +237,6 @@ fn parse_line(line: &str, start_ms: i32, end_ms: i32) -> Option<VoiceText> {
         let punctuation_normalization = SenseVoicePunctuationNormalization::from_str(punct_str)?;
 
         Some(VoiceText {
-            start_ms,
-            end_ms,
             language,
             emotion,
             event,
@@ -293,13 +289,14 @@ impl SenseVoiceSmallError {
 ///
 /// This structure manages components such as voice activity detection (VAD), automatic speech recognition (ASR),
 /// and RKNN model inference for processing audio data.
+#[derive(Debug)]
 pub struct SenseVoiceSmall {
     vad_frontend: WavFrontend,
     asr_frontend: WavFrontend,
     n_seq: usize,
     spp: SentencePieceProcessor,
     rknn: Rknn,
-    fsmn: FSMNVad,
+    fsmn: Mutex<FSMNVad>,
     embedding: Array2<f32>,
 }
 
@@ -321,7 +318,10 @@ impl SenseVoiceSmall {
     ///
     /// let mut svs = SenseVoiceSmall::init().expect("Failed to initialize SenseVoiceSmall");
     /// ```
-    pub fn init<P: AsRef<std::path::Path>>(model_path: P) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn init<P: AsRef<std::path::Path>>(
+        model_path: P,
+        vadconfig: VADXOptions,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         // TODO: Maybe we should read a config file in the reop to read model.
         let api = Api::new().unwrap();
         let repo = api.model(model_path.as_ref().to_string_lossy().to_string());
@@ -333,7 +333,7 @@ impl SenseVoiceSmall {
         let am_path = repo.get("am.mvn")?;
 
         // TODO: Should read config
-        let fsmn = FSMNVad::new(fsmn_path, VADXOptions::default()).unwrap();
+        let fsmn = Mutex::new(FSMNVad::new(fsmn_path, vadconfig).unwrap());
 
         // Load embedding.npy
         let embedding_file = File::open(embedding_path)?;
@@ -390,7 +390,7 @@ impl SenseVoiceSmall {
     ///
     /// Returns an error if feature extraction, VAD inference, or RKNN processing fails.
     pub fn infer_vec(
-        &mut self,
+        &self,
         content: Vec<i16>,
         sample_rate: u32,
     ) -> Result<Vec<VoiceText>, Box<dyn std::error::Error>> {
@@ -398,7 +398,10 @@ impl SenseVoiceSmall {
         let audio_feats = self.vad_frontend.extract_features(&content)?;
 
         // 進行 VAD 推理
-        let segments = self.fsmn.infer_vad(audio_feats, &content, true)?;
+        let segments = {
+            let mut fsmn = self.fsmn.lock().unwrap();
+            fsmn.infer_vad(audio_feats, &content, true)?
+        };
 
         // 處理語音片段
         let mut ret = Vec::new();
@@ -406,20 +409,26 @@ impl SenseVoiceSmall {
             let start_sample = (start_ms as f32 / 1000.0 * sample_rate as f32) as usize;
             let end_sample = (end_ms as f32 / 1000.0 * sample_rate as f32) as usize;
             let segment = &content[start_sample..end_sample];
-            // 提取特徵
-            let audio_feats = self.asr_frontend.extract_features(segment)?;
-
-            // 準備 RKNN 輸入
-            self.prepare_rknn_input_advanced(&audio_feats, 0, false)?; // language=0 (auto), use_itn=false
-            self.rknn.run()?;
-            let mut asr_output = self.rknn.outputs_get_raw::<f32>()?;
-            let asr_text = self.decode_asr_output(&asr_output.data)?;
-            self.rknn.outputs_release(&mut asr_output)?; // 資料會被丟棄，不可再用asr_output
-                                                         // 處理輸出並解碼為文字
-            let vt = parse_line(&asr_text, start_ms, end_ms).unwrap();
+            let vt = self.recognition(segment)?;
             ret.push(vt);
         }
         Ok(ret)
+    }
+
+    pub fn recognition(&self, segment: &[i16]) -> Result<VoiceText, Box<dyn std::error::Error>> {
+        // 提取特徵
+        let audio_feats = self.asr_frontend.extract_features(segment)?;
+
+        // 準備 RKNN 輸入
+        self.prepare_rknn_input_advanced(&audio_feats, 0, false)?; // language=0 (auto), use_itn=false
+        self.rknn.run()?;
+        let mut asr_output = self.rknn.outputs_get_raw::<f32>()?;
+        let asr_text = self.decode_asr_output(&asr_output.data)?;
+        self.rknn.outputs_release(&mut asr_output)?; // 資料會被丟棄，不可再用asr_output
+        match parse_line(&asr_text) {  // 處理輸出並解碼為文字
+            Some(vt) => Ok(vt),
+            None => Err(format!("Parse line failed, text is:{}, If u still get empty text, please check your vad config. This model only can infer 9 secs voice.",asr_text).into() ),
+        }
     }
 
     /// Performs speech recognition on an audio file.
@@ -456,7 +465,7 @@ impl SenseVoiceSmall {
     /// }
     /// ```
     pub fn infer_file<P: AsRef<std::path::Path>>(
-        &mut self,
+        &self,
         wav_path: P,
     ) -> Result<Vec<VoiceText>, Box<dyn std::error::Error>> {
         let mut wav_reader = WavReader::open(wav_path)?;
@@ -580,7 +589,7 @@ impl SenseVoiceSmall {
     ///
     /// Returns an error if tensor concatenation, padding, or RKNN input setting fails.
     fn prepare_rknn_input_advanced(
-        &mut self,
+        &self,
         feats: &Array2<f32>,
         language: usize,
         use_itn: bool,

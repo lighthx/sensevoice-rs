@@ -1,7 +1,7 @@
 use std::{ffi::CStr, fs::File};
 
 use kaldi_fbank_rust_kautism::{FbankOptions, FrameExtractionOptions, MelBanksOptions, OnlineFbank};
-use ndarray::{s, Array1, Array2, ArrayView1, Axis};
+use ndarray::{s, Array1, Array2};
 
 /// Represents the type of window function used in feature extraction.
 ///
@@ -26,7 +26,7 @@ pub enum WindowType {
 /// Configuration for the `WavFrontend` audio feature extraction system.
 ///
 /// This structure defines parameters for processing waveforms into mel-frequency features.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WavFrontendConfig {
     /// Sample rate of the audio in Hz (e.g., 16000).
     pub sample_rate: i32,
@@ -71,7 +71,7 @@ impl Default for WavFrontendConfig {
 /// Audio feature extraction frontend for processing waveforms.
 ///
 /// This structure handles the extraction of mel-frequency features from audio data, optionally applying LFR and CMVN.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WavFrontend {
     /// Configuration settings for feature extraction.
     config: WavFrontendConfig,
@@ -278,7 +278,7 @@ impl WavFrontend {
             };
             let frame = padded_fbank.slice(s![start..end, ..]);
             let mut target = lfr_array.slice_mut(s![i, ..frame.len()]);
-            target.assign(&frame.into_shape(frame.len()).unwrap());
+            target.assign(&frame.into_shape_with_order(frame.len()).unwrap());
             if end < start + lfr_m {
                 let last_row = padded_fbank.slice(s![-1, ..]);
                 for j in end - start..lfr_m {
