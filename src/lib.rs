@@ -1,8 +1,10 @@
 pub mod fsmn_vad;
+
+#[cfg(feature = "stream")]
+pub mod silero_vad;
 pub mod wavfrontend;
 
 use core::fmt;
-use std::io::Read;
 use std::sync::Mutex;
 use std::{fs::File, io::BufReader};
 
@@ -16,7 +18,17 @@ use rayon::iter::IntoParallelIterator;
 use regex::Regex;
 use rknn_rs::prelude::{Rknn, RknnInput, RknnTensorFormat, RknnTensorType};
 use sentencepiece::SentencePieceProcessor;
+
+#[cfg(feature = "stream")]
+use silero_vad::{VadConfig, VadProcessor};
 use wavfrontend::{WavFrontend, WavFrontendConfig};
+
+#[cfg(feature = "stream")]
+use async_stream::stream;
+#[cfg(feature = "stream")]
+use futures::stream::Stream;
+#[cfg(feature = "stream")]
+use futures::StreamExt;
 
 /// Represents supported languages for speech recognition.
 ///
@@ -297,6 +309,9 @@ pub struct SenseVoiceSmall {
     spp: SentencePieceProcessor,
     rknn: Rknn,
     fsmn: Mutex<FSMNVad>,
+
+    #[cfg(feature = "stream")]
+    silero_vad: VadProcessor,
     embedding: Array2<f32>,
 }
 
@@ -361,11 +376,17 @@ impl SenseVoiceSmall {
             ..Default::default()
         })?;
 
+        #[cfg(feature = "stream")]
+        let silero_vad = VadProcessor::new(VadConfig::default())?;
+
         Ok(SenseVoiceSmall {
             vad_frontend,
             asr_frontend,
             embedding,
             n_seq,
+
+            #[cfg(feature = "stream")]
+            silero_vad,
             spp,
             rknn,
             fsmn,
@@ -428,6 +449,27 @@ impl SenseVoiceSmall {
         match parse_line(&asr_text) {  // 處理輸出並解碼為文字
             Some(vt) => Ok(vt),
             None => Err(format!("Parse line failed, text is:{}, If u still get empty text, please check your vad config. This model only can infer 9 secs voice.",asr_text).into() ),
+        }
+    }
+
+    #[cfg(feature = "stream")]
+    pub fn infer_stream<S>(
+        &mut self,
+        input_stream: S,
+    ) -> impl Stream<Item = Result<VoiceText, Box<dyn std::error::Error>>>
+    where
+        S: Stream<Item = Vec<i16>> + Unpin,
+    {
+        stream! {
+        let mut stream = input_stream;
+        while let Some(chunk) = stream.next().await {
+        if let Some(segment) = self.silero_vad.process_chunk(&chunk) {
+        yield self.recognition(&segment);
+        }
+        }
+        if let Some(segment) = self.silero_vad.finish() {
+        yield self.recognition(&segment);
+        }
         }
     }
 

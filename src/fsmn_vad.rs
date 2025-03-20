@@ -1,6 +1,4 @@
-use ndarray::stack;
 use ndarray::Array2;
-use ndarray::Axis;
 use ndarray::Ix3;
 use ort::session::Session;
 use std::path::Path;
