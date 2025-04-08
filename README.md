@@ -1,4 +1,4 @@
-# SenseVoiceSmall
+# SenseVoiceSmall [![dependency status](https://deps.rs/repo/github/darkautism/sensevoice-rs/status.svg)](https://deps.rs/repo/github/darkautism/sensevoice-rs)
 
 A Rust-based, Rknn as backend ASR. Running on the low cost SBC npu, fast and chep.
 
