@@ -7,7 +7,7 @@ homepage = "https://github.com/darkautism/sensevoice-rs"
 license = "MIT"
 
 [patch.crates-io]
-rknn-rs = { path = "../rknn-rs"}
+#rknn-rs = { path = "../rknn-rs"}
 #voice_activity_detector = { path = "../voice_activity_detector"}
 
 [dependencies]
