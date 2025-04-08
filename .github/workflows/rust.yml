@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,9 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: RustDoc
+      run: cargo doc --verbose
     - name: fmt
       run: cargo fmt --verbose
-    - name: doc
-      run: cargo doc --verbose
     - name: Build
       run: cargo build --verbose
