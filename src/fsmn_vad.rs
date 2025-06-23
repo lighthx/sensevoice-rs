@@ -1,4 +1,5 @@
 use ndarray::Array2;
+use ndarray::ArrayView;
 use ndarray::Ix3;
 use ort::session::Session;
 use std::path::Path;
@@ -475,13 +476,14 @@ impl FSMNVad {
         // output:name: logits, tensor: float32[1,Softmaxlogits_dim_1,248] (不要再眼瞎看錯了，是3維，那不是逗點)
 
         let feats_3d = feats.insert_axis(ndarray::Axis(0));
+        let speech_tensor = ort::value::Tensor::from_array(feats_3d.clone())?;
         let inputs = ort::inputs![
-            "speech" => feats_3d.clone()
-        ]?;
+            "speech" => speech_tensor
+        ];
         let outputs = self.session.run(inputs)?;
-        let logits = outputs["logits"].try_extract_tensor::<f32>()?;
-        let dyn_to_fix3array = logits.into_dimensionality::<Ix3>()?;
-
+        let logits_array: ArrayView<f32, _> = outputs["logits"].try_extract_array::<f32>()?;  
+        let dyn_to_fix3array = logits_array.into_dimensionality::<Ix3>()?;  
+    //Ok(dyn_to_fix3array.to_owned())  
         Ok(dyn_to_fix3array.to_owned())
     }
 

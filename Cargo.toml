@@ -1,6 +1,6 @@
 [package]
 name = "sensevoice-rs"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "A Rust-based, SenseVoiceSmall "
 homepage = "https://github.com/darkautism/sensevoice-rs"
@@ -16,10 +16,10 @@ rknn-rs = "0.1.1"
 hound = "3.5.1"
 ndarray = { version="0.16.1", features=["rayon"]}
 ndarray-npy = "0.9.1"
-sentencepiece = "0.11.2"
+sentencepiece = "0.11.3"
 ndarray-stats = "0.6.0"
 rayon = "1.10.0"
-hf-hub = "0.4.2"
+hf-hub = "0.4.3"
 regex = "1.11.1"
 voice_activity_detector = { version = "0.2.0", optional = true }
 futures = { version = "0.3.31", optional = true }
@@ -34,4 +34,4 @@ stream = ["futures", "async-stream", "voice_activity_detector"]
 ort = { version = "2.0.0-rc.9", features = ["coreml", "ndarray", "load-dynamic"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
-ort = { version = "2.0.0-rc.9", features = ["ndarray"] }
+ort = { version = "2.0.0-rc.9", features = ["ndarray", "load-dynamic"] }
