@@ -482,8 +482,7 @@ impl FSMNVad {
         ];
         let outputs = self.session.run(inputs)?;
         let logits_array: ArrayView<f32, _> = outputs["logits"].try_extract_array::<f32>()?;  
-        let dyn_to_fix3array = logits_array.into_dimensionality::<Ix3>()?;  
-    //Ok(dyn_to_fix3array.to_owned())  
+        let dyn_to_fix3array = logits_array.into_dimensionality::<Ix3>()?;
         Ok(dyn_to_fix3array.to_owned())
     }
 
