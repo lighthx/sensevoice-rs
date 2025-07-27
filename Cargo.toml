@@ -1,6 +1,6 @@
 [package]
 name = "sensevoice-rs"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "A Rust-based, SenseVoiceSmall "
 homepage = "https://github.com/darkautism/sensevoice-rs"
@@ -12,7 +12,7 @@ license = "MIT"
 
 [dependencies]
 kaldi-fbank-rust-kautism = "0.1.0"
-rknn-rs = "0.1.1"
+rknn-rs = "0.1.2"
 hound = "3.5.1"
 ndarray = { version="0.16.1", features=["rayon"]}
 ndarray-npy = "0.9.1"
