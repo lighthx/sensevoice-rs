@@ -338,14 +338,14 @@ impl SenseVoiceSmall {
         vadconfig: VADXOptions,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // TODO: Maybe we should read a config file in the reop to read model.
-        let api = Api::new().unwrap();
-        let repo = api.model(model_path.as_ref().to_string_lossy().to_string());
-        let fsmn_path = repo.get("fsmnvad-offline.onnx")?;
-        let embedding_path = repo.get("embedding.npy")?;
-        let rknn_path = repo.get("sense-voice-encoder.rknn")?;
-        let sentence_path = repo.get("chn_jpn_yue_eng_ko_spectok.bpe.model")?;
-        let fsmn_am_path = repo.get("fsmn-am.mvn")?;
-        let am_path = repo.get("am.mvn")?;
+        let fsmn_path = model_path.as_ref().join("fsmnvad-offline.onnx");
+        let embedding_path = model_path.as_ref().join("embedding.npy");
+        let rknn_path = model_path.as_ref().join("sense-voice-encoder.rknn");
+        let sentence_path = model_path
+            .as_ref()
+            .join("chn_jpn_yue_eng_ko_spectok.bpe.model");
+        let fsmn_am_path = model_path.as_ref().join("fsmn-am.mvn");
+        let am_path = model_path.as_ref().join("am.mvn");
 
         // TODO: Should read config
         let fsmn = Mutex::new(FSMNVad::new(fsmn_path, vadconfig).unwrap());
