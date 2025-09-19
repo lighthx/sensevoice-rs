@@ -147,9 +147,9 @@ impl WindowDetector {
 #[derive(Debug, Clone, Copy)]
 pub struct VADXOptions {
     /// Sample rate of the audio in Hz (e.g., 16000).
-    sample_rate: u32,
+    pub sample_rate: u32,
     /// Frame interval in milliseconds.
-    frame_in_ms: usize,
+    pub frame_in_ms: usize,
     /// Frame length in milliseconds.
     frame_length_ms: usize,
     /// Decibel threshold for silence detection.
@@ -167,7 +167,7 @@ pub struct VADXOptions {
     /// Time threshold in milliseconds to transition from speech to silence.
     speech_to_sil_time_thres: usize,
     /// Maximum duration of a single speech segment in milliseconds.
-    max_single_segment_time: usize,
+    pub max_single_segment_time: usize,
     /// Detection mode (single or multiple utterances).
     detect_mode: VadDetectMode,
     /// Ratio of speech to noise for probability calculation.
@@ -288,10 +288,7 @@ impl FSMNVad {
     /// let vad = FSMNVad::new(Path::new("model.onnx"), opts)
     ///     .expect("Failed to initialize FSMNVad");
     /// ```
-    pub fn new(
-        model_path: impl AsRef<Path>,
-        opts: VADXOptions,
-    ) -> Result<Self, ort::Error> {
+    pub fn new(model_path: impl AsRef<Path>, opts: VADXOptions) -> Result<Self, ort::Error> {
         let session = ort::session::Session::builder()?.commit_from_file(model_path)?;
         Ok(Self {
             session,
@@ -481,7 +478,7 @@ impl FSMNVad {
             "speech" => speech_tensor
         ];
         let outputs = self.session.run(inputs)?;
-        let logits_array: ArrayView<f32, _> = outputs["logits"].try_extract_array::<f32>()?;  
+        let logits_array: ArrayView<f32, _> = outputs["logits"].try_extract_array::<f32>()?;
         let dyn_to_fix3array = logits_array.into_dimensionality::<Ix3>()?;
         Ok(dyn_to_fix3array.to_owned())
     }
